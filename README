@@ -1,0 +1,52 @@
+PACKAGE DOCUMENTATION
+
+package zmonmetrics
+    import (
+        zmon2 "github.com/zalando/go-zmonmetrics"
+    )
+
+    go package for use with goat (https://github.com/bahlo/goat) and zmon
+    (https://github.com/zalando/zmon) to collect metrics
+
+FUNCTIONS
+
+func ExpireMetrics()
+
+func Handler(h http.Handler, u func(r *http.Request) string) http.Handler
+    The "Metrics" struct needs to be wrapped as Handler somewhere in main:
+
+	 import (
+	    zmon2 "github.com/zalando/go-zmonmetrics"
+	    "net/http"
+	    "strings"
+	 )
+
+	 func zMetrics(h http.Handler) {
+		  return zmon2.Handler(h, url2key)
+	 }
+
+	 func url2key(r *http.Request) string {
+	   e := strings.Split(strings.Replace(r.URL.Path, "//", "/", -1), "/")
+	   if len(e) > 1 {
+	      e[1] = "{id}"
+	   }
+	   return strings.Join(e, ".")
+	 }
+	 ...
+
+	 go zmon2.ExpireMetrics()
+	 r.Use(zMetrics)
+	 r.Get("/metrics", "ZMon2 Metrics", zmon2.MetricsHandler)
+
+func MetricsHandler(w http.ResponseWriter, r *http.Request, p goat.Params)
+
+TYPES
+
+type Metrics struct {
+    UrlToKey func(r *http.Request) string
+    // contains filtered or unexported fields
+}
+
+func (m *Metrics) ServeHTTP(w http.ResponseWriter, r *http.Request)
+
+
