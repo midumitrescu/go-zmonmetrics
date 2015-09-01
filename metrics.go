@@ -1,4 +1,4 @@
-// go package for use with goat (https://github.com/bahlo/goat) and 
+// go package for use with goat (https://github.com/bahlo/goat) and
 // zmon (https://github.com/zalando/zmon) to collect metrics
 package zmonmetrics
 
@@ -7,20 +7,48 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
-
 type Metrics struct {
-	handler	http.Handler
-	UrlToKey	func(r *http.Request, c int) string
+	handler  http.Handler
+	UrlToKey func(r *http.Request, c int) string
 }
 
+// this one needs to be wrapped in main like
+//  func ZMon2Metrics (h http.Handler) http.Handler {
+//     return zmon2.Handler(h, url2key)
+//  }
+//
+//  // this is the default if the func is nil:
+//  func url2key(r *http.Request, code int) (url string) {
+//     // bare minimum is to replace all "/" by ".":
+//     url = strings.Replace(r.URL.Path, "//", "/", -1)[1:] // exclude leading "/"
+//     url = strings.Replace(url, "/", ".", -1)
+//     return
+//  }
+//
+// ... and use it:
+//  func main() {
+//    ...
+//    r.Use(ZMon2Metrics)
+//    r.Get("/metrics", "ZMon2 Metrics", zmon2.MetricsHandler)
+//  }
 func Handler(h http.Handler, u func(r *http.Request, c int) string) http.Handler {
+	if u == nil {
+		u = defaultUrlToKey
+	}
 	return &Metrics{
 		handler:  h,
 		UrlToKey: u,
 	}
+}
+
+func defaultUrlToKey(r *http.Request, c int) (url string) {
+	url = strings.Replace(r.URL.Path, "//", "/", -1)[1:] // exclude leading "/"
+	url = strings.Replace(url, "/", ".", -1)
+	return url
 }
 
 var reg = metrics.NewRegistry()
@@ -32,8 +60,10 @@ func MetricsHandler(w http.ResponseWriter, r *http.Request, p goat.Params) {
 
 func (m *Metrics) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
+
 	h := &monitor{writer: w}
 	m.handler.ServeHTTP(h, r)
+
 	dur := time.Now().Sub(now)
 
 	if h.code == 0 {

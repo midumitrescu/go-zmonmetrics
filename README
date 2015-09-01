@@ -1,8 +1,8 @@
-PACKAGE DOCUMENTATION
 
 package zmonmetrics
     import (
         zmon2 "github.com/zalando/go-zmonmetrics"
+        ...
     )
 
     go package for use with goat (https://github.com/bahlo/goat) and zmon
@@ -10,40 +10,35 @@ package zmonmetrics
 
 FUNCTIONS
 
-func ExpireMetrics()
+func Handler(h http.Handler, u func(r *http.Request, c int) string) http.Handler
+    this one needs to be wrapped in main like
 
-func Handler(h http.Handler, u func(r *http.Request) string) http.Handler
-    The "Metrics" struct needs to be wrapped as Handler somewhere in main:
+	func ZMon2Metrics (h http.Handler) http.Handler {
+	   return zmon2.Handler(h, url2key)
+	}
 
-	 import (
-	    zmon2 "github.com/zalando/go-zmonmetrics"
-	    "net/http"
-	    "strings"
-	 )
+	// this is the default if the func is nil:
+	func url2key(r *http.Request, code int) (url string) {
+	   // bare minimum is to replace all "/" by ".":
+	   url = strings.Replace(r.URL.Path, "//", "/", -1)[1:] // exclude leading "/"
+	   url = strings.Replace(url, "/", ".", -1)
+	   return
+	}
 
-	 func zMetrics(h http.Handler) {
-		  return zmon2.Handler(h, url2key)
-	 }
+    ... and use it:
 
-	 func url2key(r *http.Request) string {
-	   e := strings.Split(strings.Replace(r.URL.Path, "//", "/", -1), "/")
-	   if len(e) > 1 {
-	      e[1] = "{id}"
-	   }
-	   return strings.Join(e, ".")
-	 }
-	 ...
-
-	 go zmon2.ExpireMetrics()
-	 r.Use(zMetrics)
-	 r.Get("/metrics", "ZMon2 Metrics", zmon2.MetricsHandler)
+	func main() {
+	  ...
+	  r.Use(ZMon2Metrics)
+	  r.Get("/metrics", "ZMon2 Metrics", zmon2.MetricsHandler)
+	}
 
 func MetricsHandler(w http.ResponseWriter, r *http.Request, p goat.Params)
 
 TYPES
 
 type Metrics struct {
-    UrlToKey func(r *http.Request) string
+    UrlToKey func(r *http.Request, c int) string
     // contains filtered or unexported fields
 }
 
