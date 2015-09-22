@@ -53,6 +53,10 @@ func defaultUrlToKey(r *http.Request, c int) (url string) {
 
 var reg = metrics.NewRegistry()
 
+func Registry() metrics.Registry {
+	return reg
+}
+
 func MetricsHandler(w http.ResponseWriter, r *http.Request, p goat.Params) {
 	goat.WriteJSON(w, reg)
 	return
